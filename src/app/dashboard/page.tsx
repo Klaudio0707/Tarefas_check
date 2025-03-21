@@ -17,9 +17,12 @@ export default async function Dashboard() {
                 <title>Pagina Painel</title>
                 <meta name="description" content="Dashboard do usuário" />
             </Head>
-            <h1>Painel</h1>
-      <p>Bem-vindo, {session.user?.name}!</p>
-      <p>Email: {session.user?.email}</p>
+            <main className={styles.main}>
+
+                 <h1>Painel</h1>
+                 <p>Bem-vindo, {session.user?.name}!</p>
+                 <p>Email: {session.user?.email}</p>
+            </main>
         </div>
     )
 }
