@@ -33,7 +33,7 @@ export function Header() {
                         await signOut({ redirect: false });
                         window.location.reload();
                     }}>
-                        Olá, {session?.user?.name}
+                        Olá {session?.user?.name}
                     </button>
                 ) : (
                     <button className={styles.loginButton} onClick={() => signIn("google")}>
