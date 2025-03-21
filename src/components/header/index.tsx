@@ -5,8 +5,8 @@ import Link from 'next/link'
 
 
 export function Header() {
-    const {data: session, status} = useSession();
-    return(
+    const { data: session, status } = useSession();
+    return (
         <header className={styles.header}>
             <section className={styles.content}>
                 <nav className={styles.nav}>
@@ -14,29 +14,30 @@ export function Header() {
                         <h1 className={styles.logo}>
                             <span className={styles.efect}>
                                 Tarefas
-                             </span>
-                             <span>
+                            </span>
+                            <span>
                                 +
                             </span>
                         </h1>
                     </Link>
-                    <Link href='/dashboard' className={styles.painel}>
-                                  Meu Painel
-                          
-                    </Link>
+                    {session?.user && (
+                        <Link href='/dashboard' className={styles.painel}>
+                            Meu Painel
+                        </Link>
+                    )}
                 </nav>
-                    {status === "loading" ? (
-                      <></>
+                {status === "loading" ? (
+                    <></>
                 ) : session ? (
-                    <button className={styles.loginButton}   onClick={async () => {
+                    <button className={styles.loginButton} onClick={async () => {
                         await signOut({ redirect: false });
                         window.location.reload();
-                      }}>
-                      Olá {session?.user?.name}
+                    }}>
+                        Olá, {session?.user?.name}
                     </button>
                 ) : (
-                    <button className={styles.loginButton} onClick={ () => signIn("google")}>
-                     Acessar  
+                    <button className={styles.loginButton} onClick={() => signIn("google")}>
+                        Acessar
                     </button>
                 )}
             </section>
