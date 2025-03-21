@@ -28,12 +28,15 @@ export function Header() {
                     {status === "loading" ? (
                       <></>
                 ) : session ? (
-                    <button className={styles.loginButton} onClick={ () => signOut() }>
+                    <button className={styles.loginButton}   onClick={async () => {
+                        await signOut({ redirect: false });
+                        window.location.reload();
+                      }}>
                       Olá {session?.user?.name}
                     </button>
                 ) : (
-                    <button className={styles.loginButton} onClick={ () => signIn("google") }>
-                     Acessar
+                    <button className={styles.loginButton} onClick={ () => signIn("google")}>
+                     Acessar  
                     </button>
                 )}
             </section>
