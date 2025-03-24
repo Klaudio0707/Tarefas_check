@@ -1,8 +1,8 @@
 "use client";
 import { redirect } from "next/navigation";
-import { useSession, signIn } from "next-auth/react";
-import { ChangeEvent, useEffect, useState } from "react";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { useSession } from "next-auth/react";
+import { ChangeEvent, FormEvent, useEffect, useState } from "react";
+// import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import styles from './styles.module.css'
 import Head from 'next/head'
 import { Textarea } from "@/components/textarea";
@@ -32,7 +32,14 @@ export default function Dashboard() {
     }
     function handleChangePublic(event: ChangeEvent<HTMLInputElement>) {
         setPublicTask(event.target.checked);
-        console.log(event.target.checked);
+
+    }
+    function handleRegisterTask(event: FormEvent){
+        event.preventDefault();
+        if(input === "")
+            return;
+        
+        alert("Teste")
     }
 
     return (
@@ -45,7 +52,7 @@ export default function Dashboard() {
                 <section className={styles.content}>
                     <div className={styles.contentForm}>
                         <h1 className={styles.title}>Qual a sua tarefa</h1>
-                        <form>
+                        <form onSubmit={handleRegisterTask}>
                             <Textarea
                                 placeholder="Digite qual sua tarefa..."
                                 value={input}
