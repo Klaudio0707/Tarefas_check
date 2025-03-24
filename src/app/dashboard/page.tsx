@@ -8,6 +8,10 @@ import Head from 'next/head'
 import { Textarea } from "@/components/textarea";
 import { FiShare2 } from "react-icons/fi";
 import { FaTrash } from "react-icons/fa"
+
+import { db } from "@/services/firebaseConnection"
+import { addDoc, collection } from "firebase/firestore"
+
 export default function Dashboard() {
     const { data: session } = useSession();
     const [isSessionLoaded, setIsSessionLoaded] = useState(false);
@@ -20,7 +24,7 @@ export default function Dashboard() {
             return;
         }
         if (!session) {
-           redirect('/');
+            redirect('/');
         } else {
             setIsSessionLoaded(true);
         }
@@ -34,12 +38,23 @@ export default function Dashboard() {
         setPublicTask(event.target.checked);
 
     }
-    function handleRegisterTask(event: FormEvent){
+    async function handleRegisterTask(event: FormEvent) {
         event.preventDefault();
-        if(input === "")
-            return;
-        
-        alert("Teste")
+        if (input === "") return;
+
+        try {
+            await addDoc(collection(db, "tarefas"), {
+                tarefa: input,
+                created: new Date(),
+                user: session?.user?.name,
+                email: session?.user?.email,
+                public: publicTask,
+            });
+            setInput(""); // Limpa o campo após registrar a tarefa
+            setPublicTask(false); // Reseta o checkbox
+        } catch (error) {
+            console.error("Erro ao registrar a tarefa:", error);
+        }
     }
 
     return (
