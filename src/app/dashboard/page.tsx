@@ -2,23 +2,25 @@
 import { redirect } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { ChangeEvent, FormEvent, useEffect, useState } from "react";
-// import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import styles from './styles.module.css'
-import Head from 'next/head'
+
+import styles from './styles.module.css';
+import Head from 'next/head';
 import { Textarea } from "@/components/textarea";
 import { FiShare2 } from "react-icons/fi";
-import { FaTrash } from "react-icons/fa"
+import { FaTrash } from "react-icons/fa";
 
-import { db } from "@/services/firebaseConnection"
-import { addDoc, collection } from "firebase/firestore"
+import { db } from "@/services/firebaseConnection";
+import { addDoc, collection, query, orderBy, where, onSnapshot, deleteDoc, doc } from "firebase/firestore";
 
 export default function Dashboard() {
     const { data: session } = useSession();
     const [isSessionLoaded, setIsSessionLoaded] = useState(false);
     const [publicTask, setPublicTask] = useState(false);
     const [input, setInput] = useState("");
+    const [tarefas, setTarefas] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);  // Estado para controle de carregamento
 
-
+    // Primeiramente, verifica se a sessão foi carregada
     useEffect(() => {
         if (session === undefined) {
             return;
@@ -28,16 +30,42 @@ export default function Dashboard() {
         } else {
             setIsSessionLoaded(true);
         }
-
     }, [session]);
-    if (!isSessionLoaded) {
-        return <p>Carregando...</p>;
 
+    // Caso a sessão ainda esteja carregando, exibe "Carregando..."
+    if (session === undefined) {
+        return <p>Carregando...</p>;
     }
+
+    // Carregar as tarefas após a sessão ser carregada
+    useEffect(() => {
+        if (session && isSessionLoaded) {
+            setLoading(true);  // Inicia o carregamento
+            const tarefasRef = collection(db, "tarefas");
+            const q = query(
+                tarefasRef,
+                orderBy("created", "desc"),
+                where("email", "==", session?.user?.email)
+            );
+
+            const unsubscribe = onSnapshot(q, (snapshot) => {
+                const tarefasList = snapshot.docs.map((doc) => ({
+                    id: doc.id,
+                    ...doc.data(),
+                }));
+                setTarefas(tarefasList);
+                setLoading(false);  // Finaliza o carregamento
+            });
+
+            // Limpeza do listener do Firestore
+            return () => unsubscribe();
+        }
+    }, [session, isSessionLoaded]);
+
     function handleChangePublic(event: ChangeEvent<HTMLInputElement>) {
         setPublicTask(event.target.checked);
-
     }
+
     async function handleRegisterTask(event: FormEvent) {
         event.preventDefault();
         if (input === "") return;
@@ -54,6 +82,15 @@ export default function Dashboard() {
             setPublicTask(false); // Reseta o checkbox
         } catch (error) {
             console.error("Erro ao registrar a tarefa:", error);
+        }
+    }
+
+    async function handleDeleteTask(id: string) {
+        try {
+            const taskRef = doc(db, "tarefas", id);
+            await deleteDoc(taskRef);  // Exclui a tarefa do Firestore
+        } catch (error) {
+            console.error("Erro ao excluir a tarefa:", error);
         }
     }
 
@@ -89,25 +126,35 @@ export default function Dashboard() {
                 </section>
                 <section className={styles.taskContainer}>
                     <h1>Minhas Tarefas</h1>
-                    <article className={styles.task}>
-                        <div className={styles.tagContainer}>
-                            <label className={styles.tag}>Publico</label>
-                            <button className={styles.shareButton}>
-                                <FiShare2
-                                    size={22}
-                                    color="#3183ff"
-                                    scale={1} />
-                            </button>
-                        </div>
-                        <div className={styles.taskContent}>
-                            <p>minha primeira tarefa</p>
-                            <button className={styles.trashButton}>
-                                <FaTrash size={24} scale={1} color="#ea3140" />
-                            </button>
-                        </div>
-                    </article>
+                    {loading ? (
+                        <p>Carregando suas tarefas...</p>
+                    ) : tarefas.length > 0 ? (
+                        tarefas.map((tarefa) => (
+                            <article className={styles.task} key={tarefa.id}>
+                                <div className={styles.tagContainer}>
+                                    {tarefa.public && <label className={styles.tag}>Público</label>}
+                                    <button className={styles.shareButton}>
+                                        <FiShare2
+                                            size={22}
+                                            color="#3183ff"
+                                            scale={1} />
+                                    </button>
+                                </div>
+                                <div className={styles.taskContent}>
+                                    <p>{tarefa.tarefa}</p>
+                                    <button 
+                                        className={styles.trashButton} 
+                                        onClick={() => handleDeleteTask(tarefa.id)}>
+                                        <FaTrash size={24} scale={1} color="#ea3140" />
+                                    </button>
+                                </div>
+                            </article>
+                        ))
+                    ) : (
+                        <p>Você ainda não possui tarefas.</p>
+                    )}
                 </section>
             </main>
         </div>
-    )
+    );
 }
