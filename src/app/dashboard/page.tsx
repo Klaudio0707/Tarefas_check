@@ -1,158 +1,134 @@
 "use client";
-import { redirect } from "next/navigation";
-import { useSession } from "next-auth/react";
-import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 
-import styles from './styles.module.css';
-import Head from 'next/head';
-import { Textarea } from "@/components/textarea";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useState, ChangeEvent, FormEvent, useEffect } from "react";
+import { Textarea } from "../../components/textarea";
 import { FiShare2 } from "react-icons/fi";
 import { FaTrash } from "react-icons/fa";
+import styles from "./styles.module.css";
 
-import { db } from "@/services/firebaseConnection";
-import { addDoc, collection, query, orderBy, where, onSnapshot, deleteDoc, doc } from "firebase/firestore";
+import { db } from "../../services/firebaseConnection";
+import { addDoc, collection, getDocs } from "firebase/firestore";
+
+interface TaskProps {
+    id: string;
+    created: Date;
+    public: boolean;
+    tarefa: string;
+    user: string;
+}
 
 export default function Dashboard() {
-    const { data: session } = useSession();
-    const [isSessionLoaded, setIsSessionLoaded] = useState(false);
-    const [publicTask, setPublicTask] = useState(false);
+    const { data: session, status } = useSession();
+    const router = useRouter();
+
     const [input, setInput] = useState("");
-    const [tarefas, setTarefas] = useState<any[]>([]);
-    const [loading, setLoading] = useState(false);  // Estado para controle de carregamento
+    const [publicTask, setPublicTask] = useState(false);
+    const [tasks, setTasks] = useState<TaskProps[]>([]);
 
-    // Primeiramente, verifica se a sessão foi carregada
+    // Carregar tarefas do Firebase
     useEffect(() => {
-        if (session === undefined) {
-            return;
-        }
-        if (!session) {
-            redirect('/');
-        } else {
-            setIsSessionLoaded(true);
-        }
-    }, [session]);
-
-    // Caso a sessão ainda esteja carregando, exibe "Carregando..."
-    if (session === undefined) {
-        return <p>Carregando...</p>;
-    }
-
-    // Carregar as tarefas após a sessão ser carregada
-    useEffect(() => {
-        if (session && isSessionLoaded) {
-            setLoading(true);  // Inicia o carregamento
-            const tarefasRef = collection(db, "tarefas");
-            const q = query(
-                tarefasRef,
-                orderBy("created", "desc"),
-                where("email", "==", session?.user?.email)
-            );
-
-            const unsubscribe = onSnapshot(q, (snapshot) => {
-                const tarefasList = snapshot.docs.map((doc) => ({
-                    id: doc.id,
-                    ...doc.data(),
-                }));
-                setTarefas(tarefasList);
-                setLoading(false);  // Finaliza o carregamento
+        async function loadTasks() {
+            const querySnapshot = await getDocs(collection(db, "tarefas"));
+            const taskList: TaskProps[] = [];
+            querySnapshot.forEach((doc) => {
+                taskList.push({ id: doc.id, ...doc.data() } as TaskProps);
             });
-
-            // Limpeza do listener do Firestore
-            return () => unsubscribe();
+            setTasks(taskList);
         }
-    }, [session, isSessionLoaded]);
 
-    function handleChangePublic(event: ChangeEvent<HTMLInputElement>) {
-        setPublicTask(event.target.checked);
+        loadTasks();
+    }, [tasks]);
+
+    // Redirecionar para a página inicial se não estiver autenticado
+    useEffect(() => {
+        if (status === "unauthenticated") {
+            router.push("/");
+        }
+    }, [status, router]);
+
+    if (status === "loading") {
+        return <p>Carregando...</p>;
     }
 
     async function handleRegisterTask(event: FormEvent) {
         event.preventDefault();
-        if (input === "") return;
+
+        if (input.trim() === "") {
+            alert("Por favor, insira uma tarefa.");
+            return;
+        }
 
         try {
             await addDoc(collection(db, "tarefas"), {
-                tarefa: input,
+                tarefa: input.trim(),
                 created: new Date(),
-                user: session?.user?.name,
-                email: session?.user?.email,
+                user: session?.user?.email || "Usuário desconhecido",
                 public: publicTask,
             });
-            setInput(""); // Limpa o campo após registrar a tarefa
-            setPublicTask(false); // Reseta o checkbox
-        } catch (error) {
-            console.error("Erro ao registrar a tarefa:", error);
-        }
-    }
 
-    async function handleDeleteTask(id: string) {
-        try {
-            const taskRef = doc(db, "tarefas", id);
-            await deleteDoc(taskRef);  // Exclui a tarefa do Firestore
-        } catch (error) {
-            console.error("Erro ao excluir a tarefa:", error);
+            setInput("");
+            setPublicTask(false);
+            alert("Tarefa registrada com sucesso!");
+        } catch (err) {
+            console.error("Erro ao registrar tarefa:", err);
+            alert("Houve um problema ao registrar a tarefa.");
         }
     }
 
     return (
         <div className={styles.container}>
-            <Head>
-                <title>Painel de tarefas</title>
-                <meta name="description" content="Dashboard do usuário" />
-            </Head>
             <main className={styles.main}>
                 <section className={styles.content}>
                     <div className={styles.contentForm}>
-                        <h1 className={styles.title}>Qual a sua tarefa</h1>
+                        <h1 className={styles.title}>Qual sua tarefa?</h1>
                         <form onSubmit={handleRegisterTask}>
                             <Textarea
                                 placeholder="Digite qual sua tarefa..."
                                 value={input}
                                 onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>
-                                    setInput(event.target.value)} />
+                                    setInput(event.target.value)
+                                }
+                            />
                             <div className={styles.checkboxArea}>
-                                <input type="checkbox"
+                                <input
+                                    type="checkbox"
                                     className={styles.checkbox}
                                     checked={publicTask}
-                                    onChange={handleChangePublic}
+                                    onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                                        setPublicTask(event.target.checked)
+                                    }
                                 />
-                                <label> Deixar tarefa publica?</label>
+                                <label>Deixar tarefa pública?</label>
                             </div>
-                            <button type="submit" className={styles.button}>
+                            <button className={styles.button} type="submit">
                                 Registrar
                             </button>
                         </form>
                     </div>
                 </section>
+
                 <section className={styles.taskContainer}>
-                    <h1>Minhas Tarefas</h1>
-                    {loading ? (
-                        <p>Carregando suas tarefas...</p>
-                    ) : tarefas.length > 0 ? (
-                        tarefas.map((tarefa) => (
-                            <article className={styles.task} key={tarefa.id}>
-                                <div className={styles.tagContainer}>
-                                    {tarefa.public && <label className={styles.tag}>Público</label>}
-                                    <button className={styles.shareButton}>
-                                        <FiShare2
-                                            size={22}
-                                            color="#3183ff"
-                                            scale={1} />
-                                    </button>
-                                </div>
-                                <div className={styles.taskContent}>
-                                    <p>{tarefa.tarefa}</p>
-                                    <button 
-                                        className={styles.trashButton} 
-                                        onClick={() => handleDeleteTask(tarefa.id)}>
-                                        <FaTrash size={24} scale={1} color="#ea3140" />
-                                    </button>
-                                </div>
-                            </article>
-                        ))
-                    ) : (
-                        <p>Você ainda não possui tarefas.</p>
-                    )}
+                    <h1>Minhas tarefas</h1>
+                    {tasks.map((task) => (
+                        <article key={task.id} className={styles.task}>
+                            <div className={styles.tagContainer}>
+                                {task.public && (
+                                    <label className={styles.tag}>PÚBLICO</label>
+                                )}
+                                <button className={styles.shareButton}>
+                                    <FiShare2 size={22} color="#3183ff" />
+                                </button>
+                            </div>
+                            <div className={styles.taskContent}>
+                                <p>{task.tarefa}</p>
+                                <button className={styles.trashButton}>
+                                    <FaTrash size={24} color="#ea3140" />
+                                </button>
+                            </div>
+                        </article>
+                    ))}
                 </section>
             </main>
         </div>
