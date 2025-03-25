@@ -7,6 +7,7 @@ import { Textarea } from "../../components/textarea";
 import { FiShare2 } from "react-icons/fi";
 import { FaTrash } from "react-icons/fa";
 import styles from "./styles.module.css";
+import Link from "next/link";
 
 import { db } from "../../services/firebaseConnection";
 import { addDoc, collection, getDocs } from "firebase/firestore";
@@ -76,7 +77,12 @@ export default function Dashboard() {
             alert("Houve um problema ao registrar a tarefa.");
         }
     }
+        async function handleSharedTask(id: string){
+            await navigator.clipboard.writeText(
+                `${process.env.NEXT_PUBLIC_URL}/task/${id}`
+            )
 
+        }
     return (
         <div className={styles.container}>
             <main className={styles.main}>
@@ -117,12 +123,18 @@ export default function Dashboard() {
                                 {task.public && (
                                     <label className={styles.tag}>PÚBLICO</label>
                                 )}
-                                <button className={styles.shareButton}>
+                               { <button className={styles.shareButton} onClick={ () => handleSharedTask(task.id)}>
                                     <FiShare2 size={22} color="#3183ff" />
-                                </button>
+                                </button>}
                             </div>
                             <div className={styles.taskContent}>
+                             {task.public ? (
+                                <Link href={`/task/${task.id}`}>
                                 <p>{task.tarefa}</p>
+                                </Link>
+                             ) : (
+                                <p>{task.tarefa}</p>
+                             )}
                                 <button className={styles.trashButton}>
                                     <FaTrash size={24} color="#ea3140" />
                                 </button>
