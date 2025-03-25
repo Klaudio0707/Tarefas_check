@@ -8,9 +8,10 @@ import { FiShare2 } from "react-icons/fi";
 import { FaTrash } from "react-icons/fa";
 import styles from "./styles.module.css";
 import Link from "next/link";
+import { FiLoader } from "react-icons/fi";
 
 import { db } from "../../services/firebaseConnection";
-import { addDoc, collection, getDocs } from "firebase/firestore";
+import { addDoc, collection, getDocs, doc, deleteDoc } from "firebase/firestore";
 
 interface TaskProps {
     id: string;
@@ -27,6 +28,8 @@ export default function Dashboard() {
     const [input, setInput] = useState("");
     const [publicTask, setPublicTask] = useState(false);
     const [tasks, setTasks] = useState<TaskProps[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+
 
     // Carregar tarefas do Firebase
     useEffect(() => {
@@ -60,7 +63,7 @@ export default function Dashboard() {
             alert("Por favor, insira uma tarefa.");
             return;
         }
-
+        setIsLoading(true);
         try {
             await addDoc(collection(db, "tarefas"), {
                 tarefa: input.trim(),
@@ -71,18 +74,26 @@ export default function Dashboard() {
 
             setInput("");
             setPublicTask(false);
-            alert("Tarefa registrada com sucesso!");
+            console.log("Tarefa registrada com sucesso!");
         } catch (err) {
             console.error("Erro ao registrar tarefa:", err);
             alert("Houve um problema ao registrar a tarefa.");
+        } finally {
+            setIsLoading(false);
         }
     }
-        async function handleSharedTask(id: string){
-            await navigator.clipboard.writeText(
-                `${process.env.NEXT_PUBLIC_URL}/task/${id}`
-            )
 
-        }
+    async function handleDeleteTask(id: string) {
+        const docRef = doc(db, "tarefas", id);
+        await deleteDoc(docRef);
+
+    }
+    async function handleSharedTask(id: string) {
+        await navigator.clipboard.writeText(
+            `${process.env.NEXT_PUBLIC_URL}/task/${id}`
+        )
+        alert("URL da tarefa copiada com sucesso!")
+    }
     return (
         <div className={styles.container}>
             <main className={styles.main}>
@@ -108,8 +119,16 @@ export default function Dashboard() {
                                 />
                                 <label>Deixar tarefa pública?</label>
                             </div>
-                            <button className={styles.button} type="submit">
-                                Registrar
+                            <button
+                                type="submit"
+                                className={`${styles.button} ${isLoading ? styles.loading : ''}`}
+                                disabled={isLoading}
+                            >
+                                {isLoading ? (
+                                    <FiLoader size={24} className={styles["loading-spinner"]} />
+                                ) : (
+                                    'Registrar'
+                                )}
                             </button>
                         </form>
                     </div>
@@ -123,19 +142,19 @@ export default function Dashboard() {
                                 {task.public && (
                                     <label className={styles.tag}>PÚBLICO</label>
                                 )}
-                               { <button className={styles.shareButton} onClick={ () => handleSharedTask(task.id)}>
+                                {<button className={styles.shareButton} onClick={() => handleSharedTask(task.id)}>
                                     <FiShare2 size={22} color="#3183ff" />
                                 </button>}
                             </div>
                             <div className={styles.taskContent}>
-                             {task.public ? (
-                                <Link href={`/task/${task.id}`}>
-                                <p>{task.tarefa}</p>
-                                </Link>
-                             ) : (
-                                <p>{task.tarefa}</p>
-                             )}
-                                <button className={styles.trashButton}>
+                                {task.public ? (
+                                    <Link href={`/task/${task.id}`}>
+                                        <p>{task.tarefa}</p>
+                                    </Link>
+                                ) : (
+                                    <p>{task.tarefa}</p>
+                                )}
+                                <button className={styles.trashButton} onClick={() => handleDeleteTask(task.id)}>
                                     <FaTrash size={24} color="#ea3140" />
                                 </button>
                             </div>
