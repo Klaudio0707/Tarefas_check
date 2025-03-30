@@ -29,7 +29,7 @@ Antes de iniciar, certifique-se de ter as seguintes ferramentas instaladas em su
 Execute o seguinte comando no terminal para clonar o repositório:
 
 ```bash
-git clone https://github.com/seu-usuario/tarefas.git
+git clone https://github.com/Klaudio0707/Tarefas_check
 ```
 
 ### Passo 2: Acesse o Diretório do Projeto
